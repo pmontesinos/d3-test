@@ -1,7 +1,8 @@
 threadMeUp.StrikesPerYearPieView = Backbone.View.extend({
 
-	el: $('svg.chart'),
+	className: 'svg-container',
 	data: [],
+	appEl: null,
 	spinner: null,
 	width: null,
 	height: null,
@@ -13,19 +14,24 @@ threadMeUp.StrikesPerYearPieView = Backbone.View.extend({
 	tip: null,
 	margin: {top: 20, right: 30, bottom: 30, left: 40},
 	x: null,
+	title: 'Drone Strikes Per Year in the Mid-East',
+
+	svgTemplate: _.template('<svg class="pie chart"></svg>'),
 
 	initialize: function(options) {
 		_.bindAll(this, 'resize');
 		
 		var rawData = options.data.strike;
 		this.spinner = options.spinner;
+		this.appEl = options.appEl;
 
 		this.formatData(rawData);
 	},
 
 	render: function() {
 		this.spinner.remove();
-		this.assembleSvg();
+		this.$el.html(this.svgTemplate());
+		this.appEl.find('h1').text(this.title);
 	},
 
 	formatData: function(rawData) {
@@ -54,8 +60,8 @@ threadMeUp.StrikesPerYearPieView = Backbone.View.extend({
 	assembleSvg: function() {
 		var that = this;
 
-		this.width = parseInt(d3.select('.svg-container').style('width'), 10) - this.margin.left - this.margin.right,
-    	this.height = parseInt(d3.select('.svg-container').style('height'), 10) - this.margin.top - this.margin.bottom;
+		this.width = parseInt(d3.select(this.$el[0]).style('width'), 10) - this.margin.left - this.margin.right,
+    	this.height = parseInt(d3.select(this.$el[0]).style('height'), 10) - this.margin.top - this.margin.bottom;
     	this.radius = Math.min(this.width, this.height) / 2;
 
     	this.color = d3.scale.category20c();
@@ -67,7 +73,7 @@ threadMeUp.StrikesPerYearPieView = Backbone.View.extend({
 		    return "<h1>Year: " + d.data.year + "</h1><span style='color:red'>" + d.data.strikes + "</span>";
 		  });
 
-    	this.chart = d3.select(this.$el[0])
+    	this.chart = d3.select(this.$el.find('svg')[0])
 			.attr('width', this.width)
 			.attr('height', this.height);
 
@@ -102,15 +108,25 @@ threadMeUp.StrikesPerYearPieView = Backbone.View.extend({
 	resize: function() {
 		var that = this;
 
-		this.width = parseInt(d3.select('.svg-container').style('width'), 10) - this.margin.left - this.margin.right,
-    	this.height = parseInt(d3.select('.svg-container').style('height'), 10) - this.margin.top - this.margin.bottom;
+		this.width = parseInt(d3.select(this.$el[0]).style('width'), 10) - this.margin.left - this.margin.right,
+    	this.height = parseInt(d3.select(this.$el[0]).style('height'), 10) - this.margin.top - this.margin.bottom;
     	this.radius = Math.min(this.width, this.height) / 2;
 
     	this.color = d3.scale.category20c();
 
-    	this.chart = d3.select(this.$el[0])
+    	this.tip = d3.tip()
+		  .attr('class', 'd3-tip')
+		  .offset([50, -30])
+		  .html(function(d) {
+		    return "<h1>Year: " + d.data.year + "</h1><span style='color:red'>" + d.data.strikes + "</span>";
+		  });
+
+    	this.chart = d3.select(this.$el.find('svg')[0])
 			.attr('width', this.width)
 			.attr('height', this.height);
+
+
+		this.chart.call(this.tip);
 
 		d3.select(this.$el[0]).selectAll('g')
 			.remove();
@@ -142,6 +158,19 @@ threadMeUp.StrikesPerYearPieView = Backbone.View.extend({
 				return that.color(d.data.strikes);
 			})
 			.attr('class', 'slice')
-			.attr('d', this.arc);
+			.attr('d', this.arc)
+			.on('mouseover', this.tip.show)
+      		.on('mouseout', this.tip.hide);
+	},
+
+	destroy: function() {
+		this.undelegateEvents();
+
+		this.$el.removeData().unbind();
+
+		this.chart.selectAll("*").remove();
+
+		this.remove();  
+		Backbone.View.prototype.remove.call(this);
 	}
 });
