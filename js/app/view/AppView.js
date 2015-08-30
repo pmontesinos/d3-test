@@ -1,37 +1,42 @@
 threadMeUp.AppView = Backbone.View.extend({
 
-	el: $('body'),
+	el: $('.container'),
 	data: null,
+	spinnerView: null,
 
 	initialize: function() {
-		console.log('initializing appview');
-		
-		var url = 'http://api.dronestre.am/data?callback=?',
-			that = this;
-
-		$.ajax({
-		   type: 'GET',
-		    url: url,
-		    async: false,
-		    jsonpCallback: 'jsonCallback',
-		    contentType: "application/json",
-		    dataType: 'jsonp',
-		    success: function(json) {
-		      that.data = json;
-		      that.render();
-		    },
-		    error: function(e) {
-		       console.log(e.message);
-		    }
-		});
-
-
-
+		this.spinnerView = new threadMeUp.SpinnerView();
 	},
 
 	render: function() {
+		
+		this.spinnerView.render();
+		this.$el.append(this.spinnerView.$el);
+
+		var that = this,
+			droneData = new threadMeUp.AppModel();
+
+		droneData.fetch({
+			success: function(model, response, options) {
+				that.data = response;
+				that.renderApp();
+			},
+			error: function() {
+				console.log('trouble loading data');
+			}
+		});
+	},
+
+	renderApp: function() {
+		var buttonsView = new threadMeUp.ButtonsView({
+			appEl: this.$el,
+			spinner: this.spinnerView
+		});
+		buttonsView.render();
+
 		var countryDeathsChartView = new threadMeUp.CountryDeathsChartView({
-			data: this.data
+			data: this.data,
+			spinner: this.spinnerView
 		});
 		countryDeathsChartView.render();
 	}
