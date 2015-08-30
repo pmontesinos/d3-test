@@ -1,7 +1,8 @@
 threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 
-	el: $('.deaths-per-country'),
+	el: $('svg.chart'),
 	data: [],
+	spinner: null,
 	width: null,
 	height: null,
 	margin: {top: 20, right: 30, bottom: 30, left: 40},
@@ -11,7 +12,17 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 		_.bindAll(this, 'resize');
 		
 		var rawData = options.data.strike;
+		this.spinner = options.spinner;
 
+		this.formatData(rawData);
+	},
+
+	render: function() {
+		this.spinner.remove();
+		this.assembleSvg();
+	},
+
+	formatData: function(rawData) {
 		var countriesObj = _.groupBy(rawData, 'country');
 		var countries = _.keys(countriesObj);
 
@@ -40,14 +51,9 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 		this.data = _.sortBy(this.data, 'country');
 	},
 
-	render: function() {
-		this.assembleSvg();
-		//this.$el.text(this.data);
-	},
-
 	assembleSvg: function() {
-		this.width = parseInt(d3.select('main').style('width'), 10) - this.margin.left - this.margin.right,
-    	this.height = parseInt(d3.select('main').style('height'), 10) - this.margin.top - this.margin.bottom;
+		this.width = parseInt(d3.select('.svg-container').style('width'), 10) - this.margin.left - this.margin.right,
+    	this.height = parseInt(d3.select('.svg-container').style('height'), 10) - this.margin.top - this.margin.bottom;
     	var tempHeight = this.height,
     	that = this;
 
@@ -90,28 +96,7 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 			return d.totalDeaths; 
 		})]);
 
-		var barWidth = this.width / this.data.length;
-/*
-		var bar = chart.selectAll("g")
-			.data(this.data)
-			.enter()
-			.append("g")
-			.attr("transform", function(d) { 
-				return "translate(" + x(d.country) + ",0)"; 
-			});
 
-		var rect = bar.append("rect")
-	      .attr("y", function(d) { return y(d.totalDeaths); })
-	      .attr("height", function(d) { return tempHeight - y(d.totalDeaths); })
-	      .attr("width", x.rangeBand());
-
-		var text = bar.append("text")
-		  .attr("x", x.rangeBand() / 2)
-		  .attr("y", function(d) { return y(d.totalDeaths) + 3; })
-		  .attr("dy", ".75em")
-		  .text(function(d) { return d.totalDeaths; });
-
-*/
 		this.chart.call(this.tip);
 
 		this.chart.append("g")
@@ -160,28 +145,35 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 		resize: function() {
 			var that = this;
 
-			this.width = parseInt(d3.select(this.$el[0]).style('width'), 10);
-			this.width = this.width - this.margin.left - this.margin.right;
+			this.width = parseInt(d3.select(this.$el[0]).style('width'), 10) - this.margin.left - this.margin.right;
+			this.height = parseInt(d3.select(this.$el.parent()[0]).style('height'), 10) - this.margin.top - this.margin.bottom;
 
-			this.x.range([0, this.width]);
+			this.x.rangeBands([0, this.width], 0.3);
+			d3.select('.x.axis')
+				.attr("transform", "translate(0," + this.height + ")")
+				.call(this.xAxis);
 
-			d3.select(this.$el[0])
-			.style('height', (this.height + this.margin.top + this.margin.bottom) + 'px')
-			.style('width', (that.x.rangeExtent()[1] + this.margin.left + this.margin.right) + 'px');
+			this.y.range([this.height, 0]);
+			d3.select('.y.axis').call(this.yAxis);
+			this.yAxis.ticks(Math.max(this.height/50, 2));
 
-			this.chart.selectAll('rect')
-			.attr('height', function(d) { return that.x(d.totalDeaths); });
+			this.bar = this.chart.selectAll(".bar")
+				.data(this.data);
 
-			// update median ticks
-			var median = d3.median(this.chart.selectAll('.bar').data(), 
-			function(d) { return d.totalDeaths; });
+			this.bar
+				.enter()
+				.append('rect');
 
+			this.bar
+				.exit()
+				.remove();
 
-			// update axes
-			this.chart.select('.x.axis').call(this.xAxis.orient('top'));
-			this.chart.select('.x.axis').call(this.xAxis.orient('bottom'));
-
-			
-
+			this.bar
+				.transition()
+				.attr("class", "bar")
+				.attr("x", function(d) { return that.x(d.country); })
+				.attr("width", this.x.rangeBand())
+				.attr("height", function(d) { return that.height - that.y(d.totalDeaths); })
+				.attr("y", function(d) { return that.y(d.totalDeaths); });
 		}
 });
