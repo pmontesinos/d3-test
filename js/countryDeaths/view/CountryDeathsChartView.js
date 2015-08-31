@@ -1,25 +1,31 @@
 threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 
-	el: $('svg.chart'),
+	className: 'svg-container',
 	data: [],
 	spinner: null,
+	appEl: null,
 	width: null,
 	height: null,
 	margin: {top: 20, right: 30, bottom: 30, left: 40},
 	x: null,
+	title: 'Total Deaths By Drone Strike Per Country',
+
+	svgTemplate: _.template('<svg class="bar chart"></svg>'),
 
 	initialize: function(options) {
 		_.bindAll(this, 'resize');
 		
 		var rawData = options.data.strike;
 		this.spinner = options.spinner;
+		this.appEl = options.appEl;
 
 		this.formatData(rawData);
 	},
 
 	render: function() {
 		this.spinner.remove();
-		this.assembleSvg();
+		this.$el.html(this.svgTemplate());
+		this.appEl.find('h1').text(this.title);
 	},
 
 	formatData: function(rawData) {
@@ -52,8 +58,8 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 	},
 
 	assembleSvg: function() {
-		this.width = parseInt(d3.select('.svg-container').style('width'), 10) - this.margin.left - this.margin.right,
-    	this.height = parseInt(d3.select('.svg-container').style('height'), 10) - this.margin.top - this.margin.bottom;
+		this.width = parseInt(d3.select(this.$el[0]).style('width'), 10) - this.margin.left - this.margin.right,
+    	this.height = parseInt(d3.select(this.$el[0]).style('height'), 10) - this.margin.top - this.margin.bottom;
     	var tempHeight = this.height,
     	that = this;
 
@@ -80,10 +86,11 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 		  });
 
 
-		this.chart = d3.select(this.$el[0])
+		this.chart = d3.select(this.$el.find('svg')[0])
 		    .attr("width", this.width + this.margin.left + this.margin.right)
-		    .attr("height", this.height + this.margin.top + this.margin.bottom)
-		    .append("g")
+		    .attr("height", this.height + this.margin.top + this.margin.bottom);
+
+		this.mainGroup = this.chart.append("g")
 		    .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
 
 
@@ -99,12 +106,14 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 
 		this.chart.call(this.tip);
 
-		this.chart.append("g")
+		this.mainGroup.append("g")
 			.attr("class", "x axis")
 			.attr("transform", "translate(0," + this.height + ")")
-			.call(this.xAxis);
+			.call(this.xAxis)
+			.selectAll(".tick text")
+      		.call(this.wrap, this.x.rangeBand());
 
-		this.chart.append("g")
+		this.mainGroup.append("g")
 			.attr("class", "y axis")
 			.call(this.yAxis)
 			.append("text")
@@ -116,7 +125,7 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 
 
 
-		this.bar = this.chart.selectAll(".bar")
+		this.bar = this.mainGroup.selectAll(".bar")
 			.data(this.data)
 			.enter()
 			.append("rect")
@@ -134,7 +143,7 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 			.each("end", function() {
 				d3.select(this)
 				.transition()
-	  			.style("fill","blue")
+	  			.style("fill","#5A527B")
 	  			.duration(500);
 			});
 
@@ -146,18 +155,24 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 			var that = this;
 
 			this.width = parseInt(d3.select(this.$el[0]).style('width'), 10) - this.margin.left - this.margin.right;
-			this.height = parseInt(d3.select(this.$el.parent()[0]).style('height'), 10) - this.margin.top - this.margin.bottom;
+			this.height = parseInt(d3.select(this.$el[0]).style('height'), 10) - this.margin.top - this.margin.bottom;
 
 			this.x.rangeBands([0, this.width], 0.3);
 			d3.select('.x.axis')
 				.attr("transform", "translate(0," + this.height + ")")
-				.call(this.xAxis);
+				.call(this.xAxis)
+				.selectAll(".tick text")
+      			.call(this.wrap, this.x.rangeBand());
 
 			this.y.range([this.height, 0]);
 			d3.select('.y.axis').call(this.yAxis);
 			this.yAxis.ticks(Math.max(this.height/50, 2));
 
-			this.bar = this.chart.selectAll(".bar")
+			this.chart
+				.attr("width", this.width + this.margin.left + this.margin.right)
+		    	.attr("height", this.height + this.margin.top + this.margin.bottom);
+
+			this.bar = this.mainGroup.selectAll(".bar")
 				.data(this.data);
 
 			this.bar
@@ -175,5 +190,42 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 				.attr("width", this.x.rangeBand())
 				.attr("height", function(d) { return that.height - that.y(d.totalDeaths); })
 				.attr("y", function(d) { return that.y(d.totalDeaths); });
+		},
+
+		wrap: function(text, width) {
+			text.each(function() {
+			    var text = d3.select(this),
+			        words = text.text().split(/\s+/).reverse(),
+			        word,
+			        line = [],
+			        lineNumber = 0,
+			        lineHeight = 1.1, // ems
+			        y = text.attr("y"),
+			        dy = parseFloat(text.attr("dy")),
+			        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+
+			    while (word = words.pop()) {
+					line.push(word);
+					tspan.text(line.join(" "));
+
+					if (tspan.node().getComputedTextLength() > width) {
+						line.pop();
+						tspan.text(line.join(" "));
+						line = [word];
+						tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+					}
+			    }
+			});
+		},
+
+		destroy: function() {
+			this.undelegateEvents();
+
+			this.$el.removeData().unbind();
+
+			this.chart.selectAll("*").remove();
+
+			this.remove();  
+			Backbone.View.prototype.remove.call(this);
 		}
 });

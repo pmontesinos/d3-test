@@ -3,11 +3,15 @@ threadMeUp.ButtonsView = Backbone.View.extend({
 	el: $('.buttons'),
 	spinner: null,
 	appEl: null,
+	barChart: null,
+	pieChart: null,
+	barButton: null,
+	pieButton: null,
 	data: [],
 
 	events: {
-		'click .bar-chart': 'renderBarChart',
-		'click .pie-chart': 'renderPieChart',
+		'click .bar-chart:not(.inactive)': 'renderBarChart',
+		'click .pie-chart:not(.inactive)': 'renderPieChart',
 	},
 
 	initialize: function(options) {
@@ -16,19 +20,28 @@ threadMeUp.ButtonsView = Backbone.View.extend({
 		var that = this;
 		this.spinner = options.spinner;
 		this.appEl = options.appEl;
+		this.barChart = options.barChart;
+		this.pieChart = options.pieChart;
 	},
 
-	render: function() {},
+	render: function() {
+		this.barButton = this.$el.find('.bar-chart');
+		this.pieButton = this.$el.find('.pie-chart');
+		this.barButton.addClass('inactive');
+	},
 
 	renderBarChart: function() {
-		this.$el.append(this.spinner.render());
-		this.emptySvg();
+		this.spinner.render();
+		this.appEl.append(this.spinner.$el);
+		this.pieChart.destroy();
 		this.loadData(this.createBarChart);
+
 	},
 
 	renderPieChart: function() {
-		this.$el.append(this.spinner.render());
-		this.emptySvg();
+		this.spinner.render();
+		this.appEl.append(this.spinner.$el);
+		this.barChart.destroy();
 		this.loadData(this.createPieChart);
 	},
 
@@ -47,25 +60,33 @@ threadMeUp.ButtonsView = Backbone.View.extend({
 		});
 	},
 
-	emptySvg: function() {
-		d3.select('.chart').selectAll("*").remove();
-	},
-
-
 	createBarChart: function() {
+		this.barButton.addClass('inactive');
+		this.pieButton.removeClass('inactive');
 
-		var countryDeathsChartView = new threadMeUp.CountryDeathsChartView({
+		this.barChart = new threadMeUp.CountryDeathsChartView({
+			appEl: this.appEl,
 			data: this.data,
 			spinner: this.spinner
 		});
-		countryDeathsChartView.render();
+		
+		this.barChart.render();
+		this.appEl.append(this.barChart.$el);
+		this.barChart.assembleSvg();
 	},
 
 	createPieChart: function() {
-		var strikesPerYearPieView = new threadMeUp.StrikesPerYearPieView({
+		this.pieButton.addClass('inactive');
+		this.barButton.removeClass('inactive');
+
+		this.pieChart = new threadMeUp.StrikesPerYearPieView({
+			appEl: this.appEl,
 			data: this.data,
 			spinner: this.spinner
 		});
-		strikesPerYearPieView.render();
+		
+		this.pieChart.render();
+		this.appEl.append(this.pieChart.$el);
+		this.pieChart.assembleSvg();
 	}
 });

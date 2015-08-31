@@ -28,16 +28,30 @@ threadMeUp.AppView = Backbone.View.extend({
 	},
 
 	renderApp: function() {
-		var buttonsView = new threadMeUp.ButtonsView({
-			appEl: this.$el,
-			spinner: this.spinnerView
-		});
-		buttonsView.render();
-
+		
 		var countryDeathsChartView = new threadMeUp.CountryDeathsChartView({
+			appEl: this.$el,
 			data: this.data,
 			spinner: this.spinnerView
 		});
+
+		var strikesPerYearPieView = new threadMeUp.StrikesPerYearPieView({
+			appEl: this.$el,
+			data: this.data,
+			spinner: this.spinnerView
+		});
+
+		var buttonsView = new threadMeUp.ButtonsView({
+			appEl: this.$el,
+			spinner: this.spinnerView,
+			barChart: countryDeathsChartView,
+			pieChart: strikesPerYearPieView
+		});
+
+		buttonsView.render();
+
 		countryDeathsChartView.render();
+		this.$el.append(countryDeathsChartView.$el);
+		countryDeathsChartView.assembleSvg();
 	}
 });
