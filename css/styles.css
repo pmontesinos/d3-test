@@ -18,6 +18,10 @@ main {
   }
 }
 
+svg:not(:root) {
+  overflow: visible;
+}
+
 .chart {
  width: 100%;
 }

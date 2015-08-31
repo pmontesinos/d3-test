@@ -109,7 +109,9 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 		this.mainGroup.append("g")
 			.attr("class", "x axis")
 			.attr("transform", "translate(0," + this.height + ")")
-			.call(this.xAxis);
+			.call(this.xAxis)
+			.selectAll(".tick text")
+      		.call(this.wrap, this.x.rangeBand());
 
 		this.mainGroup.append("g")
 			.attr("class", "y axis")
@@ -158,7 +160,9 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 			this.x.rangeBands([0, this.width], 0.3);
 			d3.select('.x.axis')
 				.attr("transform", "translate(0," + this.height + ")")
-				.call(this.xAxis);
+				.call(this.xAxis)
+				.selectAll(".tick text")
+      			.call(this.wrap, this.x.rangeBand());
 
 			this.y.range([this.height, 0]);
 			d3.select('.y.axis').call(this.yAxis);
@@ -186,6 +190,32 @@ threadMeUp.CountryDeathsChartView = Backbone.View.extend({
 				.attr("width", this.x.rangeBand())
 				.attr("height", function(d) { return that.height - that.y(d.totalDeaths); })
 				.attr("y", function(d) { return that.y(d.totalDeaths); });
+		},
+
+		wrap: function(text, width) {
+			text.each(function() {
+			    var text = d3.select(this),
+			        words = text.text().split(/\s+/).reverse(),
+			        word,
+			        line = [],
+			        lineNumber = 0,
+			        lineHeight = 1.1, // ems
+			        y = text.attr("y"),
+			        dy = parseFloat(text.attr("dy")),
+			        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+
+			    while (word = words.pop()) {
+					line.push(word);
+					tspan.text(line.join(" "));
+
+					if (tspan.node().getComputedTextLength() > width) {
+						line.pop();
+						tspan.text(line.join(" "));
+						line = [word];
+						tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+					}
+			    }
+			});
 		},
 
 		destroy: function() {
